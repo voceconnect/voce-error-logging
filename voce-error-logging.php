@@ -8,6 +8,7 @@ Author: jeffstieler
 License: A "Slug" license name e.g. GPL2
 */
 
+// TODO: Admin notice with Enable toggle
 // TODO: Auto-clean-up of old error logs, either by age or max total errors
 // TODO: Collapsable post rows on edit.php
 // TODO: Highlight 'tools > logged errors' menu item on ?post_type=error
@@ -15,11 +16,13 @@ License: A "Slug" license name e.g. GPL2
 class Voce_Error_Logging {
 
 	const POST_TYPE = 'error';
+	const ENABLED_OPTION = 'voce_error_logging_enabled';
 
 	public static function init() {
 		add_action('init', array(__CLASS__, 'create_post_type'));
 		add_action('init', array(__CLASS__, 'redirect_to_error_listing'));
-		add_action('admin_menu', array(__CLASS__, 'add_menu_item'));
+		add_action('admin_menu', array(__CLASS__, 'add_menu_items'));
+		add_action('load-edit.php', array(__CLASS__, 'add_admin_notice'));
 		add_filter('manage_error_posts_columns', array(__CLASS__, 'set_error_columns'));
 		add_action('manage_error_posts_custom_column', array(__CLASS__, 'display_error_columns'), 10, 2);
 	}
@@ -39,8 +42,20 @@ class Voce_Error_Logging {
 		));
 	}
 
-	public static function add_menu_item() {
+	public static function add_menu_items() {
 		add_submenu_page('tools.php', 'Logged Errors', 'Error Log', 'manage_options', 'error_log', array(__CLASS__, 'logged_errors_page'));
+	}
+
+	public static function add_admin_notice() {
+		if (isset($_GET['post_type']) && (self::POST_TYPE == $_GET['post_type'])) {
+			add_action('admin_notices', array(__CLASS__, 'add_enable_toggle'));
+		}
+	}
+
+	public static function add_enable_toggle() {
+		?>
+		<div class="updated below-h2" id="message"><p>Error Logging is enabled. <a href="http://wordpress31.dev/?p=1">Turn it off.</a></p></div>
+		<?php
 	}
 
 	public static function redirect_to_error_listing() {
@@ -50,7 +65,15 @@ class Voce_Error_Logging {
 		}
 	}
 
+	protected static function logging_enabled() {
+		return (bool)get_option(self::ENABLED_OPTION);
+	}
+
 	public static function error_log($post_title, $error) {
+
+		if (!self::logging_enabled()) {
+			return;
+		}
 
 		$post_content = (is_string($error) ? $error : print_r($error, true)) . "\n\n";
 		$backtrace = array_slice(debug_backtrace(), 1); // slice removes call to this function
