@@ -3,9 +3,9 @@
 Plugin Name: Voce Error Logging
 Plugin URI: http://plugins.voceconnect.com
 Description: Allows error logging as a post type, for VIP sites and developers that don't have access to log files.
-Version: 0.1
+Version: 0.2
 Author: jeffstieler
-License: A "Slug" license name e.g. GPL2
+License: GPL2
 */
 
 // TODO: Admin notice with Enable toggle
@@ -15,14 +15,14 @@ License: A "Slug" license name e.g. GPL2
 
 class Voce_Error_Logging {
 
-	const POST_TYPE = 'error';
-	const ENABLED_OPTION = 'voce_error_logging_enabled';
+	const POST_TYPE = 'voce-error-log';
+	const TAXONOMY = 'voce-error-log-status';
 
 	public static function init() {
 		add_action('init', array(__CLASS__, 'create_post_type'));
+		add_action('init', array(__CLASS__, 'create_status_taxonomy'));
 		add_action('init', array(__CLASS__, 'redirect_to_error_listing'));
 		add_action('admin_menu', array(__CLASS__, 'add_menu_items'));
-		add_action('load-edit.php', array(__CLASS__, 'add_admin_notice'));
 		add_filter('manage_error_posts_columns', array(__CLASS__, 'set_error_columns'));
 		add_action('manage_error_posts_custom_column', array(__CLASS__, 'display_error_columns'), 10, 2);
 	}
@@ -41,21 +41,19 @@ class Voce_Error_Logging {
 			'show_in_menu' => false,
 		));
 	}
+	
+	public static function create_status_taxonomy(){
+		register_taxonomy(self::TAXONOMY, self::POST_TYPE, array(
+			'public' => true,
+			'show_in_nav_menus' => false,
+			'show_ui' => true,
+			'hierarchical' => false,
+			'label' => 'Log Types',
+		));
+	}
 
 	public static function add_menu_items() {
 		add_submenu_page('tools.php', 'Logged Errors', 'Error Log', 'manage_options', 'error_log', array(__CLASS__, 'logged_errors_page'));
-	}
-
-	public static function add_admin_notice() {
-		if (isset($_GET['post_type']) && (self::POST_TYPE == $_GET['post_type'])) {
-			add_action('admin_notices', array(__CLASS__, 'add_enable_toggle'));
-		}
-	}
-
-	public static function add_enable_toggle() {
-		?>
-		<div class="updated below-h2" id="message"><p>Error Logging is enabled. <a href="http://wordpress31.dev/?p=1">Turn it off.</a></p></div>
-		<?php
 	}
 
 	public static function redirect_to_error_listing() {
@@ -65,18 +63,17 @@ class Voce_Error_Logging {
 		}
 	}
 
-	protected static function logging_enabled() {
-		return (bool)get_option(self::ENABLED_OPTION);
-	}
-
-	public static function error_log($post_title, $error) {
-
-		if (!self::logging_enabled()) {
-			return;
-		}
+	public static function error_log($post_title, $error, $tags = array()) {
 
 		$post_content = (is_string($error) ? $error : print_r($error, true)) . "\n\n";
-		$backtrace = array_slice(debug_backtrace(), 1); // slice removes call to this function
+		$backtrace = debug_backtrace();
+
+		// remove calls to this function and template tags that call it
+		foreach ($backtrace as $i => $call) {
+			if ( ('voce_error_log' === $call['function']) || ('error_log' === $call['function']) ) {
+				unset($backtrace[$i]);
+			}
+		}
 		$post_content .= "<hr>\n";
 		
 		foreach ($backtrace as $call) {
@@ -89,9 +86,10 @@ class Voce_Error_Logging {
 		}
 
 		$postarr = compact('post_title', 'post_content');
-		$postarr = array_merge($postarr, array('post_type' => self::POST_TYPE, 'post_status' => 'publish'));
+		$postarr = array_merge($postarr, array('post_type' => self::POST_TYPE, 'post_status' => 'publish', 'post_tag' => $tags));
 
-		wp_insert_post($postarr);
+		$log_id = wp_insert_post($postarr);
+		wp_set_post_terms( $log_id, $tags, self::TAXONOMY );
 
 	}
 
@@ -114,6 +112,63 @@ class Voce_Error_Logging {
 				break;
 		}
 	}
+	
+	public static function delete_logs($terms = array()) {
+		$args = array(
+			'posts_per_page' => -1,
+			'post_type' => self::POST_TYPE
+		);
+		
+		if ($terms) {
+			if (!is_array($terms)) {
+				$terms = array($terms);
+			}
+			
+			
+			$args['tax_query'] = array(
+				array(
+					'taxonomy' => Voce_Error_Logging::TAXONOMY,
+					'field' => 'slug',
+					'terms' => $terms,
+					'operator' => 'AND',
+				)
+			);
+		}
+		
+		$q = new WP_Query($args);
+		
+		$deleted = array();
+		$not_deleted = array();
+		
+		if ($q->have_posts()) {
+			foreach ($q->posts as $post) {
+				if ($p = wp_delete_post($post->ID)){
+					$deleted[] = $post->ID;
+				} else {
+					$not_deleted[] = $post->ID;
+				}
+			}
+		}
+		
+		$response['success'] = (bool) (!$not_deleted);
+		$response['error'] = (bool) ($not_deleted);
+		$response['deleted'] = $deleted;
+		$response['failed'] = $not_deleted;
+		return $response;
+	}
+	
+	public static function get_log_count() {
+		global $wpdb;
+		
+		if(false === ($log_count = wp_cache_get('lift_log_count'))) {
+			$log_count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT( 1 ) FROM $wpdb->posts
+				WHERE post_type = %s", self::POST_TYPE) );
+			
+			wp_cache_set('lift_log_count', $log_count);
+		}
+		
+		return $log_count;
+	}
 
 }
 
@@ -121,8 +176,8 @@ Voce_Error_Logging::init();
 
 // create convenience function for logging
 if (!function_exists('voce_error_log')) {
-	function voce_error_log($title, $error) {
-		return Voce_Error_Logging::error_log($title, $error);
+	function voce_error_log($title, $error, $tags = array()) {
+		return Voce_Error_Logging::error_log($title, $error, $tags);
 	}
 }
 
