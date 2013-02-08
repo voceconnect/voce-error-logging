@@ -43,7 +43,7 @@ class Voce_Error_Logging {
 				'not_found_in_trash' => 'No logged errors in trash.'
 			),
 			'show_ui' => true,
-			'show_in_menu' => true,
+			'show_in_menu' => false,
 			'supports' => array( ),
 		) );
 	}
