@@ -19,8 +19,8 @@ class Voce_Error_Logging {
 	const TAXONOMY = 'voce-error-log-status';
 
 	public static function init() {
-		add_action( 'init', array( __CLASS__, 'create_post_type' ) );
-		add_action( 'init', array( __CLASS__, 'create_status_taxonomy' ) );
+		add_action( 'init', array( __CLASS__, 'create_post_type' ), 9 );
+		add_action( 'init', array( __CLASS__, 'create_status_taxonomy' ), 9 );
 		add_action( 'init', array( __CLASS__, 'redirect_to_error_listing' ) );
 
 		if ( is_admin() ) {
