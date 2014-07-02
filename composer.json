@@ -10,7 +10,7 @@
         {
             "name" : "Jeff Stieler",
             "email": "jeff@voceconnect.com"
-        },        
+        }
     ],
     "autoload": {
         "files": ["voce-error-logging.php"]
