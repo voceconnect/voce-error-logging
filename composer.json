@@ -1,0 +1,18 @@
+{
+    "name": "voceconnect/voce-error-logging",
+    "description": "Allows error logging as a post type.",
+    "license": "GPLv2+",
+    "authors": [
+        {
+            "name": "Michael Pretty",
+            "email": "mpretty@voceconnect.com"
+        },
+        {
+            "name" : "Jeff Stieler",
+            "email": "jeff@voceconnect.com"
+        },        
+    ],
+    "autoload": {
+        "files": ["voce-error-logging.php"]
+    }
+}
