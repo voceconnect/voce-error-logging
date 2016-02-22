@@ -1,7 +1,7 @@
 <?php
 
-if( defined( 'ABSPATH' ) && function_exists('add_action') ) {
-	if( !action_exists('admin_init', array( 'Voce_Error_Logging', 'init' ) ) ) {
-		add_action( 'admin_init', array( 'Voce_Error_Logging', 'init' ) );
+if ( defined( 'ABSPATH' ) && function_exists('add_action') ) {
+	if ( ! has_action( 'init', array( 'Voce_Error_Logging', 'create_post_type' ) ) ) {
+		Voce_Error_Logging::init();
 	}
 }
