@@ -3,7 +3,7 @@
   Plugin Name: Voce Error Logging
   Plugin URI: http://plugins.voceconnect.com
   Description: Allows error logging as a post type, for VIP sites and developers that don't have access to log files.
-  Version: 0.3.1
+  Version: 0.4
   Author: jeffstieler
   License: GPL2
  */
