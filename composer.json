@@ -13,6 +13,7 @@
         }
     ],
     "autoload": {
-        "files": ["voce-error-logging.php"]
+        "classmap": ["voce-error-logging.php"],
+        "files": ["bootstrap.php"]
     }
 }

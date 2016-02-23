@@ -3,7 +3,7 @@
   Plugin Name: Voce Error Logging
   Plugin URI: http://plugins.voceconnect.com
   Description: Allows error logging as a post type, for VIP sites and developers that don't have access to log files.
-  Version: 0.3
+  Version: 0.4
   Author: jeffstieler
   License: GPL2
  */
@@ -202,16 +202,3 @@ class Voce_Error_Logging {
 	}
 
 }
-
-Voce_Error_Logging::init();
-
-// create convenience function for logging
-if ( !function_exists( 'voce_error_log' ) ) {
-
-	function voce_error_log( $title, $error, $tags = array( ) ) {
-		return Voce_Error_Logging::error_log( $title, $error, $tags );
-	}
-
-}
-
-
